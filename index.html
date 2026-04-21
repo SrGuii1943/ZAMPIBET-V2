@@ -1,781 +1,810 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZAMPIBET - Raspadinhas</title>
-    <!-- Carregamento das bibliotecas necessárias via CDN para rodar no GitHub Pages sem build -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Trophy, Wallet, ArrowUpCircle, X, Gift, RefreshCw, Star, User, Hash, 
+  TrendingUp, Coins, ChevronRight, LayoutGrid, Info, ShieldCheck, Copy, UserPlus,
+  Bell, CheckCircle2, AlertCircle, PlayCircle, Sparkles, Zap, Trash2, Key, Eye, EyeOff,
+  Clock, Flame
+} from 'lucide-react';
+
+const SUPABASE_URL = 'https://skdoibsqzfyarmgouiat.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_YKRG6EmozdRKUcFZeFRBrQ_T1CMXLRu';
+const PIX_PAYLOAD = "00020126330014br.gov.bcb.pix0111348650248405204000053039865802BR5925GUILHERME DE VASCONCELOS 6009SAO PAULO62120508ZAMPIBET63044AB0";
+const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(PIX_PAYLOAD)}`;
+
+const NotificationToast = ({ message, visible }) => (
+  <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[300] transition-all duration-500 ${visible ? 'translate-y-0 opacity-100' : '-translate-y-24 opacity-0'}`}>
+    <div className="bg-[#1a0b26] border-l-4 border-[#a855f7] px-6 py-4 rounded-r-xl shadow-[0_10px_40px_rgba(0,0,0,0.7)] flex items-center space-x-4 min-w-[300px]">
+      <div className="bg-[#a855f7]/10 p-2 rounded-full">
+        <div className="w-2 h-2 bg-[#a855f7] rounded-full animate-ping" />
+      </div>
+      <span className="text-white text-sm font-black uppercase tracking-widest">{message}</span>
+    </div>
+  </div>
+);
+
+const GlobalLiveTicker = ({ lastRealWin }) => {
+  const [currentAd, setCurrentAd] = useState("");
+  const [fade, setFade] = useState(true);
+  const queue = useRef([]);
+
+  const nicks = [
+    "Jvzin_77", "Aninha♡", "Marcos.xD", "Zampaa_02", "Luucas_ff",
+    "Rafa$orte", "Biazinha._", "Mestre?Nao", "PixDoPai_", "Duda★",
+    "ReisCartas!", "SorteGrandee", "TioPatinhas$", "BrabaDaVez", "Kaka_Frt",
+    "GutoInvest$", "Lais_ouro", "Paulinha♥", "Davi.Luck", "Fer_n0bre",
+    "JoaozinDoZap", "NatyTop1", "Carlin_99", "Vini?Talvez", "Teteu$$",
+    "Bruhzinha", "LeoZika", "Gui_777", "Paul0.s", "Rafinha._",
+    "Dnl_Alv3s", "Mirella_x", "Igor★", "FelpsZika", "Caioo!",
+    "Renanzin", "JuhPires_", "Vic.rocha", "Andr3ssa", "Thiaguin_",
+    "Luan★", "Bia_fofa", "Dgzin_ff", "Mila.bar", "Jefin_",
+    "Matheuzin", "Vanessita", "Rodrigo$", "LeehNunes", "Alex_0ff",
+    "Henr1que", "Mandinha♡", "Gustav0$", "PrittyDuarte", "Eduzin_7",
+    "Lariiih_", "Brunao_x", "Sabrininha", "Marcelo.ff", "Nat★",
+    "Dieg0._", "Tatyzinha", "Lucas?Sim", "Fernand4", "Ramonzin",
+    "Jess!ca", "Cesinha", "PatyLeite", "Alan★", "Biaa.x",
+    "Raf4el$", "Kelly._", "Otav1o", "Mayy", "Crist1ano",
+    "Debyzinha", "Wesl3y", "Aline★", "Samuka", "LuhPacheco",
+    "Joninhas", "Elaaine", "Leandro.ff", "Simonzinha", "Anders0n",
+    "Kahzinha", "Claudio_x", "Isa★", "Marciin", "DanyFicada019",
+    "Fabricio?", "Regi._", "Tiaago", "Vivii", "Erick★",
+    "Moniik", "Renat0", "Taty_coe", "Brun0$", "Juhh",
+    "ViniQueiroz", "Sandrinha", "Flav1o", "Drika_", "Jul1o",
+    "Clarinha♡", "Rogerin", "Nic0las", "Paulinha★", "Gerald0",
+    "Helen4", "Eliass", "Raqueel", "Vitin_ff", "DaniPim3ntel"
+  ];
+
+  // Monitora vitórias reais do usuário para colocar na fila
+  useEffect(() => {
+    if (lastRealWin && lastRealWin.amount >= 50) {
+      queue.current.push({
+        nick: lastRealWin.nickname,
+        amount: lastRealWin.amount,
+        isReal: true
+      });
+    }
+  }, [lastRealWin]);
+
+  const generateAd = () => {
+    setFade(false);
+    setTimeout(() => {
+      let nick, valorNum, isReal = false;
+
+      // Se houver uma vitória real na fila, prioriza ela
+      if (queue.current.length > 0) {
+        const realData = queue.current.shift();
+        nick = realData.nick;
+        valorNum = realData.amount;
+        isReal = true;
+      } else {
+        nick = nicks[Math.floor(Math.random() * nicks.length)];
+        valorNum = (Math.random() * (198.14 - 5.11) + 5.11);
+      }
+
+      const valorFormatado = valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      
+      let tipoCarta = "comum";
+      if (valorNum > 150) tipoCarta = "lendária";
+      else if (valorNum > 100) tipoCarta = "épica";
+      else if (valorNum > 50) tipoCarta = "rara";
+
+      setCurrentAd(`${nick} raspou uma carta ${tipoCarta} e ganhou R$ ${valorFormatado}`);
+      setFade(true);
+    }, 500);
+  };
+
+  useEffect(() => {
+    generateAd();
+    let timeoutId;
+    const scheduleNext = () => {
+      const nextTime = Math.random() * (15000 - 4000) + 4000; 
+      timeoutId = setTimeout(() => {
+        generateAd();
+        scheduleNext();
+      }, nextTime);
+    };
+    scheduleNext();
+    return () => clearTimeout(timeoutId);
+  }, []);
+
+  return (
+    <div className="w-full bg-black/40 border border-purple-500/20 rounded-xl p-3 mt-4 h-12 flex items-center justify-center overflow-hidden">
+      <p className={`text-[11px] font-bold tracking-tight text-center transition-opacity duration-500 ${fade ? 'opacity-100' : 'opacity-0'}`}>
+        <span className="text-purple-400">🔥 Anúncio:</span> <span className="text-gray-300">{currentAd}</span>
+      </p>
+    </div>
+  );
+};
+
+const ScratchCard = ({ onComplete, isLocked, prizeText, subText, totalWin, showCalculation, gameState }) => {
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const resize = () => {
+      canvas.width = canvas.parentElement.offsetWidth;
+      canvas.height = canvas.parentElement.offsetHeight;
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      gradient.addColorStop(0, '#a855f7');
+      gradient.addColorStop(0.5, '#7c3aed');
+      gradient.addColorStop(1, '#4c1d95');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalAlpha = 0.15;
+      for (let i = 0; i < 500; i++) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1.0;
+      ctx.font = 'bold 20px Arial';
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.textAlign = 'center';
+      ctx.fillText('RASPE AQUI', canvas.width / 2, canvas.height / 2 + 10);
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, [isLocked]);
+
+  const getPos = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  };
+
+  const scratch = (e) => {
+    if (!isDrawing || isFinished || isLocked) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const pos = getPos(e);
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 35, 0, Math.PI * 2);
+    ctx.fill();
+    checkScratched();
+  };
+
+  const checkScratched = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    let transparentPixels = 0;
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i + 3] === 0) transparentPixels++;
+    }
+    const percentage = (transparentPixels / (pixels.length / 4)) * 100;
+    if (percentage > 45 && !isFinished) {
+      setIsFinished(true);
+      onComplete();
+    }
+  };
+
+  const shouldHideCanvas = isFinished || gameState === 'revealed';
+
+  return (
+    <div className="relative w-full h-full flex items-center justify-center bg-[#1a0b26] rounded-[2.5rem] overflow-hidden">
+      {totalWin > 0 && shouldHideCanvas && (
+        <div className="absolute inset-0 z-0 overflow-hidden opacity-30 pointer-events-none select-none">
+          <div className="absolute bottom-0 left-0 right-0 h-full flex justify-center items-end space-x-2">
+            {[...Array(6)].map((_, i) => (
+              <div 
+                key={i} 
+                className="w-1/4 h-3/4 bg-gradient-to-t from-yellow-600 via-orange-500 to-transparent blur-2xl animate-flame-flicker"
+                style={{ animationDelay: `${i * 0.15}s`, opacity: 0.6 }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className={`relative z-10 flex flex-col items-center text-center transition-all duration-700 ${shouldHideCanvas ? 'scale-110 opacity-100' : 'scale-90 opacity-40'}`}>
+         <div className="relative">
+            {totalWin > 0 ? (
+              <Flame size={80} className="text-yellow-500 animate-pulse" />
+            ) : (
+              <Star size={80} className="text-gray-600 opacity-20" />
+            )}
+            {totalWin > 0 && <Sparkles className="absolute -top-4 -right-4 text-white animate-pulse" />}
+         </div>
+         <div className="mt-4 flex flex-col items-center">
+            <span className={`text-4xl font-black text-white transition-all`}>
+              {prizeText}
+            </span>
+            {showCalculation && totalWin > 0 && (
+              <div className="flex flex-col items-center animate-in">
+                <span className="text-gray-500 font-black text-[10px] my-1 uppercase">{subText}</span>
+                <h2 className={`text-6xl font-black italic tracking-tighter ${totalWin > 0 ? 'text-white' : 'text-gray-700'}`}>
+                   R$ {totalWin.toFixed(2).replace('.', ',')}
+                </h2>
+              </div>
+            )}
+         </div>
+      </div>
+
+      {!isLocked && !shouldHideCanvas && (
+        <canvas
+          ref={canvasRef}
+          onMouseDown={() => setIsDrawing(true)}
+          onMouseUp={() => setIsDrawing(false)}
+          onMouseMove={scratch}
+          onTouchStart={() => setIsDrawing(true)}
+          onTouchEnd={() => setIsDrawing(false)}
+          onTouchMove={scratch}
+          className={`absolute inset-0 z-30 cursor-crosshair transition-opacity duration-1000 ${shouldHideCanvas ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        />
+      )}
+    </div>
+  );
+};
+
+export default function App() {
+  const [supabase, setSupabase] = useState(null);
+  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
+  const [bankBalance, setBankBalance] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('auth'); 
+  const [formData, setFormData] = useState({ email: '', password: '', cpf: '', nickname: '', invite: '' });
+  const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [notification, setNotification] = useState({ show: false, text: '' });
+  
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  const [gameState, setGameState] = useState('idle'); 
+  const [scratchPrize, setScratchPrize] = useState(0); 
+  const [totalWin, setTotalWin] = useState(0); 
+  const [visualBalance, setVisualBalance] = useState(0); 
+  const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
+  const [betValue, setBetValue] = useState(1);
+  const [showCalculation, setShowCalculation] = useState(false);
+  const [showDeposit, setShowDeposit] = useState(false);
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  
+  // Estado para capturar a vitória e enviar para o Ticker
+  const [lastRealWin, setLastRealWin] = useState(null);
+
+  const notifiedWithdrawals = useRef(new Set());
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    script.async = true;
+    script.onload = () => {
+      if (window.supabase) {
+        const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        setSupabase(client);
+        client.auth.getSession().then(({ data: { session } }) => {
+          if (session) { setUser(session.user); setView('home'); }
+          setLoading(false);
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }, []);
+
+  const fetchData = async () => {
+    if (!supabase || !user) return; 
+    try {
+      const { data: uData } = await supabase.from('users_data').select('*').eq('id', user.id).maybeSingle();
+      if (uData) {
+        setUserData(uData);
+        if (!isUpdatingBalance) setVisualBalance(Number(uData.balance));
+      }
+
+      const { data: bData } = await supabase.from('platform_config').select('bank_balance').eq('id', 1).maybeSingle();
+      if (bData) setBankBalance(Number(bData.bank_balance));
+
+      const { data: nData } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (nData) setNotifications(nData);
+
+      const { data: wData } = await supabase
+        .from('withdrawals')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'completed');
+      
+      if (wData) {
+        wData.forEach(async (withdraw) => {
+          if (!notifiedWithdrawals.current.has(withdraw.id)) {
+            notifiedWithdrawals.current.add(withdraw.id);
+            const formattedVal = Number(withdraw.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            const messageText = `Seu saque de R$ ${formattedVal} foi concluído e ja está na sua conta!`;
+            showMsg(messageText);
+            const alreadyLogged = nData?.some(n => n.message.includes(withdraw.id.toString()));
+            if (!alreadyLogged) {
+              await addNotification("SAQUE CONCLUÍDO", messageText + ` (Ref: ${withdraw.id})`, "withdraw_completed");
+            }
+          }
+        });
+      }
+    } catch (err) { console.error("Erro ao buscar dados:", err); }
+  };
+
+  useEffect(() => {
+    if (user && supabase) {
+      fetchData();
+      const interval = setInterval(fetchData, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user, supabase]);
+
+  const showMsg = (text) => {
+    setNotification({ show: true, text: String(text) });
+    setTimeout(() => setNotification({ show: false, text: '' }), 4000);
+  };
+
+  const addNotification = async (title, message, type) => {
+    if (!supabase || !user) return;
+    try {
+      await supabase.from('notifications').insert([{ user_id: user.id, title, message, type }]);
+      fetchData();
+    } catch (e) { console.error(e); }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!supabase || !user) return;
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
+      setNotifications([]);
+      showMsg("HISTÓRICO LIMPO COM SUCESSO");
+    } catch (e) { 
+      console.error(e);
+      showMsg("ERRO AO APAGAR");
+    }
+  };
+
+  const formatCPF = (value) => {
+    const rawValue = value.replace(/\D/g, '').slice(0, 11);
+    return rawValue
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (isLogin) {
+        const { data, error } = await supabase.auth.signInWithPassword({ 
+          email: formData.email, 
+          password: formData.password 
+        });
+        if (error) throw error;
+        setUser(data.user);
+        setView('home');
+      } else {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.(com|com\.br)$/;
+        if (!emailRegex.test(formData.email)) {
+          throw new Error("E-MAIL INVÁLIDO (@ E FINAL .COM OU .COM.BR)");
+        }
+
+        if (!formData.nickname) throw new Error("NICKNAME É OBRIGATÓRIO");
+        if (formData.nickname.length > 30) throw new Error("NICKNAME MÁXIMO 30 CARACTERES");
+
+        const pureCpf = formData.cpf.replace(/\D/g, '');
+        if (!pureCpf || pureCpf.length !== 11) {
+          throw new Error("CPF OBRIGATÓRIO: USE EXATAMENTE 11 DÍGITOS");
+        }
+
+        const { data: existingUser } = await supabase
+          .from('users_data')
+          .select('nickname, cpf, email')
+          .or(`nickname.eq."${formData.nickname}",cpf.eq."${pureCpf}",email.eq."${formData.email}"`);
+        
+        if (existingUser && existingUser.length > 0) {
+          const hasNick = existingUser.some(u => u.nickname === formData.nickname);
+          const hasCpf = existingUser.some(u => u.cpf === pureCpf);
+          const hasEmail = existingUser.some(u => u.email === formData.email);
+          
+          if (hasNick) throw new Error("NICKNAME JÁ EM USO");
+          if (hasCpf) throw new Error("CPF JÁ EM USO");
+          if (hasEmail) throw new Error("E-MAIL JÁ EM USO");
+        }
+
+        const { data, error: authError } = await supabase.auth.signUp({ 
+          email: formData.email, 
+          password: formData.password 
+        });
+        
+        if (authError) {
+          if (authError.message.includes("User already registered")) throw new Error("E-MAIL JÁ CADASTRADO");
+          throw authError;
+        }
+
+        if (data.user) {
+          const { error: updateError } = await supabase.from('users_data').update({ 
+            nickname: formData.nickname, 
+            cpf: pureCpf, 
+            email: formData.email,
+            balance: 0,
+            invited_by: formData.invite || null
+          }).eq('id', data.user.id);
+
+          if (updateError) throw updateError;
+
+          setUser(data.user);
+          setView('home');
+          addNotification("BEM-VINDO", "Sua conta ZAMPIBET foi criada com sucesso!", "info");
+        }
+      }
+    } catch (err) { 
+      showMsg(err.message.toUpperCase()); 
+    } finally { 
+      setLoading(false); 
+    }
+  };
+
+  const startScratchSequence = async () => {
+    if (!userData || userData.balance < betValue || gameState !== 'idle') {
+      if (userData && userData.balance < betValue) showMsg("SALDO INSUFICIENTE");
+      return;
+    }
+
+    setShowCalculation(false);
+    const cost = Number(betValue);
+    const currentBalance = Number(userData.balance);
+    const bank = Number(bankBalance);
+
+    let winAmount = 0;
+    let multiplier = 0;
+
+    const luckRoll = Math.random() * 100;
+
+    if (bank < 200) {
+      if (luckRoll < 85) {
+        multiplier = 0; 
+      } else {
+        multiplier = Number((Math.random() * 0.4).toFixed(2)); 
+      }
+    } else {
+      if (luckRoll < 55) {
+        multiplier = 0;
+      } else if (luckRoll < 85) {
+        multiplier = Number((Math.random() * (0.8 - 0.1) + 0.1).toFixed(2));
+      } else if (luckRoll < 97) {
+        multiplier = Number((Math.random() * (2.5 - 1.1) + 1.1).toFixed(2));
+      } else {
+        const maxPossible = Math.min(bank * 0.15, cost * 10);
+        multiplier = Number((maxPossible / cost).toFixed(2));
+      }
+    }
+
+    winAmount = Number((cost * multiplier).toFixed(2));
+
+    if (winAmount > (bank * 0.2)) {
+      winAmount = Number((bank * 0.1).toFixed(2));
+      multiplier = Number((winAmount / cost).toFixed(2));
+    }
+
+    const intermediateBalance = currentBalance - cost;
+    setVisualBalance(intermediateBalance);
+    
+    const finalBalanceAfterGame = Number((intermediateBalance + winAmount).toFixed(2));
+    const newBank = Number((bank + cost - winAmount).toFixed(2));
+
+    try {
+      await Promise.all([
+        supabase.from('users_data').update({ balance: finalBalanceAfterGame }).eq('id', user.id),
+        supabase.from('platform_config').update({ bank_balance: newBank }).eq('id', 1)
+      ]);
+      
+      setScratchPrize(multiplier);
+      setTotalWin(winAmount);
+      setGameState('scratching');
+      
+      // Captura vitória real se for >= 50 para o Ticker
+      if (winAmount >= 50) {
+        setLastRealWin({ nickname: userData.nickname, amount: winAmount });
+      }
+
+      if (winAmount > cost * 2) {
+        addNotification("GRANDE VITÓRIA!", `Parabéns! Você ganhou R$ ${winAmount.toLocaleString('pt-BR')} na raspadinha.`, "win");
+      }
+    } catch (e) {
+      showMsg("ERRO NA CONEXÃO");
+      setVisualBalance(currentBalance);
+      setGameState('idle');
+    }
+  };
+
+  const onScratchComplete = () => {
+    setGameState('revealed'); 
+    if (totalWin <= 0) {
+      setTimeout(() => {
+        resetGame();
+      }, 2000);
+      return;
+    }
+    setTimeout(() => {
+      setShowCalculation(true); 
+      setTimeout(() => {
+        const balanceBeforeWin = Number(userData.balance) - betValue;
+        const balanceAfterWin = Number(userData.balance); 
+        animateBalanceUpdate(balanceBeforeWin, balanceAfterWin);
+      }, 1500);
+    }, 500);
+  };
+
+  const resetGame = () => {
+    setGameState('idle');
+    setTotalWin(0);
+    setScratchPrize(0);
+    setShowCalculation(false);
+  };
+
+  const animateBalanceUpdate = (start, end) => {
+    setIsUpdatingBalance(true);
+    let current = start;
+    const duration = 1200;
+    const steps = 40;
+    const increment = (end - start) / steps;
+    let stepCount = 0;
+    const timer = setInterval(() => {
+      current += increment;
+      setVisualBalance(current);
+      stepCount++;
+      if (stepCount >= steps) {
+        clearInterval(timer);
+        setVisualBalance(end);
+        setUserData(prev => ({ ...prev, balance: end }));
+        setIsUpdatingBalance(false);
+        setTimeout(() => {
+          resetGame();
+        }, 1200);
+      }
+    }, duration / steps);
+  };
+
+  const handleConfirmWithdraw = async () => {
+    const val = parseFloat(withdrawAmount);
+    if (!withdrawAmount || val <= 0) { showMsg("VALOR INVÁLIDO"); return; }
+    if (val > userData.balance) { showMsg("SALDO INSUFICIENTE"); return; }
+    try {
+      setLoading(true);
+      const { data: withdrawData, error: withdrawError } = await supabase
+        .from('withdrawals')
+        .insert([{ user_id: user.id, amount: val, pix_key: userData.cpf, status: 'pending' }])
+        .select();
+      if (withdrawError) throw withdrawError;
+      const newBalance = Number(userData.balance) - val;
+      const { error: balanceError } = await supabase.from('users_data').update({ balance: newBalance }).eq('id', user.id);
+      if (balanceError) throw balanceError;
+      addNotification("SAQUE SOLICITADO", `Seu pedido de R$ ${val.toFixed(2)} está em análise.`, "withdraw_pending");
+      setUserData(prev => ({ ...prev, balance: newBalance }));
+      setVisualBalance(newBalance);
+      showMsg("SOLICITAÇÃO ENVIADA!"); 
+      setShowWithdraw(false); 
+      setWithdrawAmount('');
+    } catch (err) { console.error(err); showMsg("ERRO AO PROCESSAR"); } finally { setLoading(false); }
+  };
+
+  if (view === 'auth') {
+    return (
+      <div className="min-h-screen bg-[#0f0417] flex flex-col items-center justify-center p-6 text-white relative">
+        <NotificationToast message={notification.text} visible={notification.show} />
+        <div className="w-full max-w-md">
+          <div className="text-center mb-10">
+            <h1 className="text-6xl font-black text-[#a855f7] italic tracking-tighter">ZAMPI<span className="text-white font-light">BET</span></h1>
+          </div>
+          <div className="bg-[#1a0b26] p-8 rounded-[2rem] border border-white/5 shadow-[0_10px_50px_rgba(168,85,247,0.1)]">
+            <div className="flex bg-black/40 p-1 rounded-xl mb-8">
+              <button onClick={() => setIsLogin(true)} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${isLogin ? 'bg-[#a855f7] text-white shadow-lg' : 'text-gray-500'}`}>Entrar</button>
+              <button onClick={() => setIsLogin(false)} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${!isLogin ? 'bg-[#a855f7] text-white shadow-lg' : 'text-gray-500'}`}>Registrar</button>
+            </div>
+            <form onSubmit={handleAuth} className="space-y-4">
+              {!isLogin && (
+                <>
+                  <div>
+                    <input type="text" placeholder="NICKNAME" maxLength={30} required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl outline-none focus:border-[#a855f7] text-sm font-bold text-white placeholder-gray-600" value={formData.nickname} onChange={e => setFormData({...formData, nickname: e.target.value})} />
+                    <p className="text-[9px] text-gray-600 mt-1 font-bold px-1 uppercase">Máximo 30 caracteres</p>
+                  </div>
+                  <div>
+                    <input type="text" placeholder="000.000.000-00" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl outline-none focus:border-[#a855f7] text-sm font-bold text-white placeholder-gray-600" value={formData.cpf} onChange={e => setFormData({...formData, cpf: formatCPF(e.target.value)})} />
+                    <p className="text-[9px] text-[#a855f7] mt-1 font-bold px-1 uppercase flex items-center gap-1"><AlertCircle size={10}/> O CPF deve ser real para você receber seus saques.</p>
+                  </div>
+                </>
+              )}
+              <input type="email" placeholder="E-MAIL" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl outline-none focus:border-[#a855f7] text-sm font-bold text-white placeholder-gray-600" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+              <div className="relative">
+                <input type={showPassword ? "text" : "password"} placeholder="SENHA" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl outline-none focus:border-[#a855f7] text-sm font-bold text-white placeholder-gray-600" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#a855f7] transition-colors">
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white font-black py-5 rounded-xl uppercase italic shadow-lg active:scale-95 transition-transform mt-4 disabled:opacity-50"> 
+                {isLogin ? 'Fazer Login' : 'Criar Conta'} 
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#0f0417] text-white flex flex-col items-center">
+      <NotificationToast message={notification.text} visible={notification.show} />
+      <header className="w-full max-w-md bg-[#1a0b26] p-5 flex justify-between items-center border-b border-purple-500/10 sticky top-0 z-[100]">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-tr from-[#a855f7] to-[#7c3aed] rounded-full flex items-center justify-center shadow-lg shadow-purple-500/20"><User size={20} /></div>
+          <div>
+            <p className="font-black text-sm uppercase italic leading-none">{userData?.nickname || 'Usuário'}</p>
+            <div className="flex items-center space-x-2 mt-1">
+               <button onClick={() => setShowNotifPanel(true)} className="relative p-1 text-purple-400">
+                  <Bell size={16} />
+                  {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-black animate-pulse">{unreadCount}</span>}
+               </button>
+               <p className="text-[9px] text-green-400 font-bold uppercase">Online</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-black/40 px-4 py-2 rounded-2xl border border-white/5 flex flex-col items-end min-w-[120px]">
+           <span className="text-[8px] font-black text-purple-500 uppercase">Seu Saldo</span>
+           <span className="font-black text-base text-white">R$ {visualBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+        </div>
+      </header>
+
+      {showNotifPanel && (
+        <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-xl flex justify-center">
+           <div className="w-full max-w-md flex flex-col h-full bg-[#0f0417]">
+              <div className="p-6 border-b border-white/5 flex justify-between items-center">
+                 <h2 className="text-xl font-black italic text-[#a855f7] uppercase tracking-tighter">Histórico de Atividades</h2>
+                 <button onClick={() => setShowNotifPanel(false)} className="text-gray-500"><X /></button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                 {notifications.length === 0 ? (
+                   <div className="h-full flex flex-col items-center justify-center text-gray-600 space-y-4">
+                      <Bell size={48} className="opacity-20" />
+                      <p className="text-sm font-bold uppercase">Nenhuma notificação ainda</p>
+                   </div>
+                 ) : (
+                   notifications.map(notif => (
+                     <div key={notif.id} className={`p-4 rounded-2xl border ${notif.is_read ? 'bg-[#1a0b26]/50 border-white/5' : 'bg-[#1a0b26] border-purple-500/30'} flex items-start space-x-4`}>
+                        <div className={`p-2 rounded-lg ${notif.type === 'win' || notif.type === 'withdraw_completed' ? 'bg-green-500/10 text-green-500' : 'bg-purple-500/10 text-purple-500'}`}>
+                           {notif.type === 'win' ? <Trophy size={18} /> : (notif.type === 'withdraw_completed' ? <CheckCircle2 size={18} /> : (notif.type === 'withdraw_pending' ? <Clock size={18} /> : <Zap size={18} />))}
+                        </div>
+                        <div className="flex-1">
+                           <p className="text-xs font-black uppercase text-white mb-1">{notif.title}</p>
+                           <p className="text-xs text-gray-400 font-medium">{notif.message}</p>
+                           <p className="text-[8px] text-gray-600 font-bold mt-2 uppercase">{new Date(notif.created_at).toLocaleString()}</p>
+                        </div>
+                        {!notif.is_read && <div className="w-2 h-2 bg-purple-500 rounded-full" />}
+                     </div>
+                   ))
+                 )}
+              </div>
+              <div className="p-6 border-t border-white/5">
+                 <button onClick={clearAllNotifications} className="w-full bg-white/5 py-4 rounded-xl text-xs font-black uppercase tracking-widest text-red-400 flex items-center justify-center space-x-2 active:scale-95 transition-transform">
+                    <Trash2 size={14} />
+                    <span>Limpar Histórico</span>
+                 </button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      <main className="w-full max-w-md p-6 flex-1 flex flex-col items-center space-y-6">
+        <div className="relative aspect-square w-[80%]">
+           <div className="absolute inset-0 bg-[#0f0417] rounded-[3rem] border-8 border-[#1a0b26] overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
+              {gameState === 'idle' ? (
+                <div onClick={startScratchSequence} className="w-full h-full bg-gradient-to-br from-[#a855f7] via-[#7c3aed] to-[#4c1d95] flex flex-col items-center justify-center cursor-pointer active:scale-95 transition-transform group">
+                  <div className="bg-white/10 p-6 rounded-full backdrop-blur-md mb-4 border border-white/20 group-hover:scale-110 transition-transform"><Star size={48} fill="white" /></div>
+                  <p className="font-black text-2xl italic uppercase tracking-tighter text-white">GERAR BILHETE</p>
+                  <div className="mt-4 bg-black/40 px-6 py-2 rounded-full border border-white/10 font-bold text-sm text-white">MULTIPLICADO POR {betValue}X</div>
+                </div>
+              ) : (
+                <ScratchCard 
+                  key={gameState === 'scratching' || gameState === 'revealed' ? 'active' : 'idle'}
+                  prizeText={`R$ ${scratchPrize.toFixed(2).replace('.', ',')}`}
+                  subText={`multiplicado por x${betValue}`}
+                  totalWin={totalWin}
+                  showCalculation={showCalculation}
+                  isLocked={gameState === 'idle'}
+                  onComplete={onScratchComplete}
+                  gameState={gameState}
+                />
+              )}
+           </div>
+        </div>
+
+        <GlobalLiveTicker lastRealWin={lastRealWin} />
+
+        <div className="grid grid-cols-3 gap-3 w-full">
+          {[1, 5, 10, 25, 50, 100].map(v => (
+            <button key={v} onClick={() => gameState === 'idle' && setBetValue(v)} className={`py-4 rounded-2xl font-black text-sm transition-all border-2 ${betValue === v ? 'bg-[#a855f7] border-white text-white scale-95 shadow-lg shadow-purple-500/40' : 'bg-[#1a0b26] border-purple-500/10 text-purple-700'}`}>R$ {v}</button>
+          ))}
+        </div>
+      </main>
+
+      <nav className="w-full max-w-md bg-[#1a0b26] border-t border-white/5 p-6 flex justify-around items-center">
+         <button onClick={() => setView('home')} className="flex flex-col items-center text-[#a855f7]"><LayoutGrid size={24}/><span className="text-[8px] font-black uppercase mt-1">Jogar</span></button>
+         <button onClick={() => { setWithdrawAmount(userData?.balance?.toString() || '0'); setShowWithdraw(true); }} className="flex flex-col items-center text-gray-500"><Wallet size={24}/><span className="text-[8px] font-black uppercase mt-1">Saque</span></button>
+         <button onClick={() => setShowDeposit(true)} className="flex flex-col items-center text-gray-500"><ArrowUpCircle size={24}/><span className="text-[8px] font-black uppercase mt-1">Depósito</span></button>
+      </nav>
+
+      {showWithdraw && (
+        <div className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
+           <div className="bg-[#1a0b26] w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 relative">
+              <button onClick={() => setShowWithdraw(false)} className="absolute right-6 top-6 text-gray-500 hover:text-white transition-colors"><X/></button>
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="bg-purple-500/20 p-2 rounded-lg text-purple-500"><Wallet size={20}/></div>
+                <h3 className="text-xl font-black italic uppercase text-white">Solicitar Saque</h3>
+              </div>
+              <div className="mb-6">
+                <label className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-2 block">Sua Chave PIX (CPF)</label>
+                <div className="w-full bg-black/40 p-4 rounded-xl border border-white/5 flex items-center justify-between">
+                   <span className="text-sm font-bold text-gray-300 tracking-wider">{userData?.cpf ? formatCPF(userData.cpf) : '---'}</span>
+                   <ShieldCheck size={16} className="text-green-500 opacity-50" />
+                </div>
+              </div>
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-2 px-1">
+                   <label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Valor do Saque</label>
+                   <span className="text-[10px] font-black text-white/40 uppercase">R$ {userData?.balance?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                </div>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-purple-500">R$</span>
+                  <input type="number" placeholder="0,00" className="w-full bg-[#0f0417] p-4 pl-12 rounded-xl border border-purple-900/30 font-black text-2xl text-white outline-none focus:border-[#a855f7]" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
+                </div>
+              </div>
+              <button onClick={handleConfirmWithdraw} disabled={loading} className="w-full bg-gradient-to-r from-[#a855f7] to-[#7c3aed] py-5 rounded-2xl font-black uppercase italic shadow-xl shadow-purple-500/20 active:scale-95 transition-all">
+                {loading ? 'Processando...' : 'Confirmar Saque'}
+              </button>
+           </div>
+        </div>
+      )}
+
+      {showDeposit && (
+        <div className="fixed inset-0 z-[300] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 text-center">
+           <div className="bg-[#1a0b26] w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 relative">
+              <button onClick={() => setShowDeposit(false)} className="absolute right-6 top-6 text-gray-500"><X/></button>
+              <h3 className="text-xl font-black italic uppercase text-[#a855f7] mb-6">Recarga via PIX</h3>
+              <div className="bg-white p-3 rounded-2xl inline-block mb-6"><img src={QR_CODE_URL} className="w-48 h-48" alt="QR Code"/></div>
+              <button onClick={() => { navigator.clipboard.writeText(PIX_PAYLOAD); showMsg("COPIADO!"); }} className="w-full bg-[#a855f7] py-4 rounded-xl font-black uppercase italic shadow-lg">Copiar Código</button>
+           </div>
+        </div>
+      )}
+
+      <style>{`
         body { background: #0f0417; user-select: none; -webkit-tap-highlight-color: transparent; font-family: sans-serif; overflow-x: hidden; }
         .animate-in { animation: slideUp 0.5s ease-out forwards; }
         @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes flame-flicker {
-            0%, 100% { transform: translateY(0) scaleY(1); opacity: 0.4; }
-            50% { transform: translateY(-5px) scaleY(1.1); opacity: 0.6; }
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-Trophy, Wallet, ArrowUpCircle, X, Gift, RefreshCw, Star, User, Hash, 
-@@ -400,21 +419,89 @@ <h2 className={`text-6xl font-black italic tracking-tighter ${totalWin > 0 ? 'te
-       const emailRegex = /^[^\s@]+@[^\s@]+\.(com|com\.br)$/;
-       if (!emailRegex.test(formData.email)) {
-         throw new Error("E-MAIL INVÁLIDO (@ E FINAL .COM OU .COM.BR)");
-        }
-}
-        .animate-flame-flicker {
-            animation: flame-flicker 1.5s ease-in-out infinite;
-            border-radius: 50% 50% 20% 20%;
-
-       if (!formData.nickname) throw new Error("NICKNAME É OBRIGATÓRIO");
-       if (formData.nickname.length > 30) throw new Error("NICKNAME MÁXIMO 30 CARACTERES");
-
-       const pureCpf = formData.cpf.replace(/\D/g, '');
-if (!pureCpf || pureCpf.length !== 11) {
-throw new Error("CPF OBRIGATÓRIO: USE EXATAMENTE 11 DÍGITOS");
-        }
-}
-        canvas { touch-action: none; }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
-
-    <script type="text/babel">
-        const { useState, useEffect, useRef, useMemo } = React;
-const { data: existingUser } = await supabase
-.from('users_data')
-.select('nickname, cpf, email')
-.or(`nickname.eq."${formData.nickname}",cpf.eq."${pureCpf}",email.eq."${formData.email}"`);
         
-
-        /**
-         * Componente de ícone corrigido para ambiente CDN.
-         * O erro #130 ocorria porque tentávamos usar objetos do Lucide diretamente como componentes.
-         */
-        const LucideIcon = ({ name, size = 24, className = "", fill = "none" }) => {
-            const iconRef = useRef(null);
-
-            useEffect(() => {
-                if (iconRef.current && window.lucide) {
-                    // Limpa conteúdo anterior para evitar duplicatas durante re-render
-                    iconRef.current.innerHTML = '';
-                    
-                    // Cria o elemento <i> que o lucide.createIcons procura
-                    const iconElement = document.createElement('i');
-                    
-                    // Converte camelCase para kebab-case para o atributo data-lucide
-                    const lucideName = name.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
-                    iconElement.setAttribute('data-lucide', lucideName);
-                    
-                    // Adiciona classes e atributos de estilo
-                    if (className) iconElement.className = className;
-                    iconElement.style.width = `${size}px`;
-                    iconElement.style.height = `${size}px`;
-                    iconElement.style.display = 'inline-block';
-                    
-                    iconRef.current.appendChild(iconElement);
-
-                    // Inicializa o ícone específico
-                    window.lucide.createIcons({
-                        attrs: {
-                            width: size,
-                            height: size,
-                            fill: fill,
-                            stroke: 'currentColor',
-                            'stroke-width': 2,
-                            'stroke-linecap': 'round',
-                            'stroke-linejoin': 'round'
-                        }
-                    });
-                }
-            }, [name, size, className, fill]);
-
-            return <span ref={iconRef} className="inline-flex items-center justify-center leading-none" />;
-        };
-
-        const SUPABASE_URL = 'https://skdoibsqzfyarmgouiat.supabase.co';
-        const SUPABASE_KEY = 'sb_publishable_YKRG6EmozdRKUcFZeFRBrQ_T1CMXLRu';
-        const PIX_PAYLOAD = "00020126330014br.gov.bcb.pix0111348650248405204000053039865802BR5925GUILHERME DE VASCONCELOS 6009SAO PAULO62120508ZAMPIBET63044AB0";
-        const QR_CODE_URL = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(PIX_PAYLOAD)}`;
-
-        const NotificationToast = ({ message, visible }) => (
-          <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[300] transition-all duration-500 ${visible ? 'translate-y-0 opacity-100' : '-translate-y-24 opacity-0'}`}>
-            <div className="bg-[#1a0b26] border-l-4 border-[#a855f7] px-6 py-4 rounded-r-xl shadow-[0_10px_40px_rgba(0,0,0,0.7)] flex items-center space-x-4 min-w-[300px]">
-              <div className="bg-[#a855f7]/10 p-2 rounded-full">
-                <div className="w-2 h-2 bg-[#a855f7] rounded-full animate-ping" />
-              </div>
-              <span className="text-white text-sm font-black uppercase tracking-widest">{message}</span>
-            </div>
-if (existingUser && existingUser.length > 0) {
-const hasNick = existingUser.some(u => u.nickname === formData.nickname);
-const hasCpf = existingUser.some(u => u.cpf === pureCpf);
-@@ -609,32 +696,243 @@ <h2 className={`text-6xl font-black italic tracking-tighter ${totalWin > 0 ? 'te
-<div className="w-full max-w-md">
-<div className="text-center mb-10">
-<h1 className="text-6xl font-black text-[#a855f7] italic tracking-tighter">ZAMPI<span className="text-white font-light">BET</span></h1>
-          </div>
-</div>
-        );
-
-        const GlobalLiveTicker = ({ lastRealWin }) => {
-          const [currentAd, setCurrentAd] = useState("");
-          const [fade, setFade] = useState(true);
-          const queue = useRef([]);
-
-          const nicks = [
-            "Jvzin_77", "Aninha♡", "Marcos.xD", "Zampaa_02", "Luucas_ff",
-            "Rafa$orte", "Biazinha._", "Mestre?Nao", "PixDoPai_", "Duda★",
-            "ReisCartas!", "SorteGrandee", "TioPatinhas$", "BrabaDaVez", "Kaka_Frt",
-            "GutoInvest$", "Lais_ouro", "Paulinha♥", "Davi.Luck", "Fer_n0bre",
-            "JoaozinDoZap", "NatyTop1", "Carlin_99", "Vini?Talvez", "Teteu$$",
-            "Bruhzinha", "LeoZika", "Gui_777", "Paul0.s", "Rafinha._",
-            "Dnl_Alv3s", "Mirella_x", "Igor★", "FelpsZika", "Caioo!",
-            "Renanzin", "JuhPires_", "Vic.rocha", "Andr3ssa", "Thiaguin_",
-            "Luan★", "Bia_fofa", "Dgzin_ff", "Mila.bar", "Jefin_",
-            "Matheuzin", "Vanessita", "Rodrigo$", "LeehNunes", "Alex_0ff",
-            "Henr1que", "Mandinha♡", "Gustav0$", "PrittyDuarte", "Eduzin_7",
-            "Lariiih_", "Brunao_x", "Sabrininha", "Marcelo.ff", "Nat★",
-            "Dieg0._", "Tatyzinha", "Lucas?Sim", "Fernand4", "Ramonzin",
-            "Jess!ca", "Cesinha", "PatyLeite", "Alan★", "Biaa.x",
-            "Raf4el$", "Kelly._", "Otav1o", "Mayy", "Crist1ano",
-            "Debyzinha", "Wesl3y", "Aline★", "Samuka", "LuhPacheco",
-            "Joninhas", "Elaaine", "Leandro.ff", "Simonzinha", "Anders0n",
-            "Kahzinha", "Claudio_x", "Isa★", "Marciin", "DanyFicada019",
-            "Fabricio?", "Regi._", "Tiaago", "Vivii", "Erick★",
-            "Moniik", "Renat0", "Taty_coe", "Brun0$", "Juhh",
-            "ViniQueiroz", "Sandrinha", "Flav1o", "Drika_", "Jul1o",
-            "Clarinha♡", "Rogerin", "Nic0las", "Paulinha★", "Gerald0",
-            "Helen4", "Eliass", "Raqueel", "Vitin_ff", "DaniPim3ntel"
-          ];
-
-          useEffect(() => {
-            if (lastRealWin && lastRealWin.amount >= 50) {
-              queue.current.push({
-                nick: lastRealWin.nickname,
-                amount: lastRealWin.amount,
-                isReal: true
-              });
-            }
-          }, [lastRealWin]);
-
-          const generateAd = () => {
-            setFade(false);
-            setTimeout(() => {
-              let nick, valorNum, isReal = false;
-              if (queue.current.length > 0) {
-                const realData = queue.current.shift();
-                nick = realData.nick;
-                valorNum = realData.amount;
-                isReal = true;
-              } else {
-                nick = nicks[Math.floor(Math.random() * nicks.length)];
-                valorNum = (Math.random() * (198.14 - 5.11) + 5.11);
-              }
-              const valorFormatado = valorNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-              let tipoCarta = "comum";
-              if (valorNum > 150) tipoCarta = "lendária";
-              else if (valorNum > 100) tipoCarta = "épica";
-              else if (valorNum > 50) tipoCarta = "rara";
-              setCurrentAd(`${nick} raspou uma carta ${tipoCarta} e ganhou R$ ${valorFormatado}`);
-              setFade(true);
-            }, 500);
-          };
-
-          useEffect(() => {
-            generateAd();
-            let timeoutId;
-            const scheduleNext = () => {
-              const nextTime = Math.random() * (15000 - 4000) + 4000; 
-              timeoutId = setTimeout(() => {
-                generateAd();
-                scheduleNext();
-              }, nextTime);
-            };
-            scheduleNext();
-            return () => clearTimeout(timeoutId);
-          }, []);
-
-          return (
-            <div className="w-full bg-black/40 border border-purple-500/20 rounded-xl p-3 mt-4 h-12 flex items-center justify-center overflow-hidden">
-              <p className={`text-[11px] font-bold tracking-tight text-center transition-opacity duration-500 ${fade ? 'opacity-100' : 'opacity-0'}`}>
-                <span className="text-purple-400">🔥 Live:</span> <span className="text-gray-300">{currentAd}</span>
-              </p>
-<div className="bg-[#1a0b26] p-8 rounded-[2rem] border border-white/5 shadow-[0_10px_50px_rgba(168,85,247,0.1)]">
-<div className="flex bg-black/40 p-1 rounded-xl mb-8">
-<button onClick={() => setIsLogin(true)} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${isLogin ? 'bg-[#a855f7] text-white shadow-lg' : 'text-gray-500'}`}>Entrar</button>
-<button onClick={() => setIsLogin(false)} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${!isLogin ? 'bg-[#a855f7] text-white shadow-lg' : 'text-gray-500'}`}>Registrar</button>
-            </div>
-</div>
-          );
-        };
-
-        const ScratchCard = ({ onComplete, isLocked, prizeText, subText, totalWin, showCalculation, gameState }) => {
-          const canvasRef = useRef(null);
-          const [isDrawing, setIsDrawing] = useState(false);
-          const [isFinished, setIsFinished] = useState(false);
-
-          useEffect(() => {
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            const resize = () => {
-              canvas.width = canvas.parentElement.offsetWidth;
-              canvas.height = canvas.parentElement.offsetHeight;
-              const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-              gradient.addColorStop(0, '#a855f7');
-              gradient.addColorStop(0.5, '#7c3aed');
-              gradient.addColorStop(1, '#4c1d95');
-              ctx.fillStyle = gradient;
-              ctx.fillRect(0, 0, canvas.width, canvas.height);
-              ctx.globalAlpha = 0.15;
-              for (let i = 0; i < 500; i++) {
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 1, 0, Math.PI * 2);
-                ctx.fill();
-              }
-              ctx.globalAlpha = 1.0;
-              ctx.font = 'bold 20px Arial';
-              ctx.fillStyle = 'rgba(255,255,255,0.8)';
-              ctx.textAlign = 'center';
-              ctx.fillText('RASPE AQUI', canvas.width / 2, canvas.height / 2 + 10);
-            };
-            resize();
-            window.addEventListener('resize', resize);
-            return () => window.removeEventListener('resize', resize);
-          }, [isLocked]);
-
-          const getPos = (e) => {
-            const canvas = canvasRef.current;
-            const rect = canvas.getBoundingClientRect();
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX - rect.left, y: clientY - rect.top };
-          };
-
-          const scratch = (e) => {
-            if (!isDrawing || isFinished || isLocked) return;
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
-            const pos = getPos(e);
-            ctx.globalCompositeOperation = 'destination-out';
-            ctx.beginPath();
-            ctx.arc(pos.x, pos.y, 35, 0, Math.PI * 2);
-            ctx.fill();
-            checkScratched();
-          };
-
-          const checkScratched = () => {
-            const canvas = canvasRef.current;
-            const ctx = canvas.getContext('2d');
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const pixels = imageData.data;
-            let transparentPixels = 0;
-            for (let i = 0; i < pixels.length; i += 4) {
-              if (pixels[i + 3] === 0) transparentPixels++;
-            }
-            const percentage = (transparentPixels / (pixels.length / 4)) * 100;
-            if (percentage > 45 && !isFinished) {
-              setIsFinished(true);
-              onComplete();
-            }
-          };
-
-          const shouldHideCanvas = isFinished || gameState === 'revealed';
-
-          return (
-            <div className="relative w-full h-full flex items-center justify-center bg-[#1a0b26] rounded-[2.5rem] overflow-hidden">
-              {totalWin > 0 && shouldHideCanvas && (
-                <div className="absolute inset-0 z-0 overflow-hidden opacity-30 pointer-events-none select-none">
-                  <div className="absolute bottom-0 left-0 right-0 h-full flex justify-center items-end space-x-2">
-                    {[...Array(6)].map((_, i) => (
-                      <div 
-                        key={i} 
-                        className="w-1/4 h-3/4 bg-gradient-to-t from-yellow-600 via-orange-500 to-transparent blur-2xl animate-flame-flicker"
-                        style={{ animationDelay: `${i * 0.15}s`, opacity: 0.6 }}
-                      />
-                    ))}
-<form onSubmit={handleAuth} className="space-y-4">
-{!isLogin && (
-<>
-<div>
-<input type="text" placeholder="NICKNAME" maxLength={30} required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl outline-none focus:border-[#a855f7] text-sm font-bold text-white placeholder-gray-600" value={formData.nickname} onChange={e => setFormData({...formData, nickname: e.target.value})} />
-<p className="text-[9px] text-gray-600 mt-1 font-bold px-1 uppercase">Máximo 30 caracteres</p>
-                  </div>
-</div>
-                </div>
-<div>
-<input type="text" placeholder="000.000.000-00" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl outline-none focus:border-[#a855f7] text-sm font-bold text-white placeholder-gray-600" value={formData.cpf} onChange={e => setFormData({...formData, cpf: formatCPF(e.target.value)})} />
-<p className="text-[9px] text-[#a855f7] mt-1 font-bold px-1 uppercase flex items-center gap-1"><AlertCircle size={10}/> O CPF deve ser real para você receber seus saques.</p>
-</div>
-</>
-              )}
-)}
-
-              <div className={`relative z-10 flex flex-col items-center text-center transition-all duration-700 ${shouldHideCanvas ? 'scale-110 opacity-100' : 'scale-90 opacity-40'}`}>
-                 <div className="relative">
-                    {totalWin > 0 ? (
-                      <LucideIcon name="Flame" size={80} className="text-yellow-500 animate-pulse" />
-                    ) : (
-                      <LucideIcon name="Star" size={80} className="text-gray-600 opacity-20" />
-                    )}
-                    {totalWin > 0 && <LucideIcon name="Sparkles" className="absolute -top-4 -right-4 text-white animate-pulse" />}
-                 </div>
-                 <div className="mt-4 flex flex-col items-center">
-                    <span className={`text-4xl font-black text-white transition-all`}>
-                      {prizeText}
-                    </span>
-                    {showCalculation && totalWin > 0 && (
-                      <div className="flex flex-col items-center animate-in">
-                        <span className="text-gray-500 font-black text-[10px] my-1 uppercase">{subText}</span>
-                        <h2 className={`text-6xl font-black italic tracking-tighter ${totalWin > 0 ? 'text-white' : 'text-gray-700'}`}>
-                           R$ {totalWin.toFixed(2).replace('.', ',')}
-                        </h2>
-                      </div>
-                    )}
-                 </div>
-<input type="email" placeholder="E-MAIL" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl outline-none focus:border-[#a855f7] text-sm font-bold text-white placeholder-gray-600" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-<div className="relative">
-<input type={showPassword ? "text" : "password"} placeholder="SENHA" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl outline-none focus:border-[#a855f7] text-sm font-bold text-white placeholder-gray-600" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-<button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-[#a855f7] transition-colors">
-{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-</button>
-              </div>
-</div>
-
-              {!isLocked && !shouldHideCanvas && (
-                <canvas
-                  ref={canvasRef}
-                  onMouseDown={() => setIsDrawing(true)}
-                  onMouseUp={() => setIsDrawing(false)}
-                  onMouseMove={scratch}
-                  onTouchStart={() => setIsDrawing(true)}
-                  onTouchEnd={() => setIsDrawing(false)}
-                  onTouchMove={scratch}
-                  className={`absolute inset-0 z-30 cursor-crosshair transition-opacity duration-1000 ${shouldHideCanvas ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-                />
-              )}
-<button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white font-black py-5 rounded-xl uppercase italic shadow-lg active:scale-95 transition-transform mt-4 disabled:opacity-50"> 
-{isLogin ? 'Fazer Login' : 'Criar Conta'} 
-</button>
-@@ -659,7 +957,250 @@ <h1 className="text-6xl font-black text-[#a855f7] italic tracking-tighter">ZAMPI
-{unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center font-black animate-pulse">{unreadCount}</span>}
-</button>
-<p className="text-[9px] text-green-400 font-bold uppercase">Online</p>
-            </div>
-</div>
-          );
-        };
-
-        function App() {
-          const [supabase, setSupabase] = useState(null);
-          const [user, setUser] = useState(null);
-          const [userData, setUserData] = useState(null);
-          const [bankBalance, setBankBalance] = useState(0);
-          const [loading, setLoading] = useState(true);
-          const [view, setView] = useState('auth'); 
-          const [formData, setFormData] = useState({ email: '', password: '', cpf: '', nickname: '', invite: '' });
-          const [isLogin, setIsLogin] = useState(true);
-          const [showPassword, setShowPassword] = useState(false);
-          const [notification, setNotification] = useState({ show: false, text: '' });
-          
-          const [notifications, setNotifications] = useState([]);
-          const [showNotifPanel, setShowNotifPanel] = useState(false);
-          const [gameState, setGameState] = useState('idle'); 
-          const [scratchPrize, setScratchPrize] = useState(0); 
-          const [totalWin, setTotalWin] = useState(0); 
-          const [visualBalance, setVisualBalance] = useState(0); 
-          const [isUpdatingBalance, setIsUpdatingBalance] = useState(false);
-          const [betValue, setBetValue] = useState(1);
-          const [showCalculation, setShowCalculation] = useState(false);
-          const [showDeposit, setShowDeposit] = useState(false);
-          const [showWithdraw, setShowWithdraw] = useState(false);
-          const [withdrawAmount, setWithdrawAmount] = useState('');
-          const [lastRealWin, setLastRealWin] = useState(null);
-
-          const notifiedWithdrawals = useRef(new Set());
-          const unreadCount = notifications.filter(n => !n.is_read).length;
-
-          useEffect(() => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-            script.async = true;
-            script.onload = () => {
-              if (window.supabase) {
-                const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                setSupabase(client);
-                client.auth.getSession().then(({ data: { session } }) => {
-                  if (session) { setUser(session.user); setView('home'); }
-                  setLoading(false);
-                });
-              }
-            };
-            document.head.appendChild(script);
-          }, []);
-
-          const fetchData = async () => {
-            if (!supabase || !user) return; 
-            try {
-              const { data: uData } = await supabase.from('users_data').select('*').eq('id', user.id).maybeSingle();
-              if (uData) {
-                setUserData(uData);
-                if (!isUpdatingBalance) setVisualBalance(Number(uData.balance));
-              }
-              const { data: bData } = await supabase.from('platform_config').select('bank_balance').eq('id', 1).maybeSingle();
-              if (bData) setBankBalance(Number(bData.bank_balance));
-
-              const { data: nData } = await supabase.from('notifications').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-              if (nData) setNotifications(nData);
-
-              const { data: wData } = await supabase.from('withdrawals').select('*').eq('user_id', user.id).eq('status', 'completed');
-              if (wData) {
-                wData.forEach(async (withdraw) => {
-                  if (!notifiedWithdrawals.current.has(withdraw.id)) {
-                    notifiedWithdrawals.current.add(withdraw.id);
-                    const formattedVal = Number(withdraw.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                    const messageText = `Seu saque de R$ ${formattedVal} foi concluído e ja está na sua conta!`;
-                    showMsg(messageText);
-                    const alreadyLogged = nData?.some(n => n.message.includes(withdraw.id.toString()));
-                    if (!alreadyLogged) await addNotification("SAQUE CONCLUÍDO", messageText + ` (Ref: ${withdraw.id})`, "withdraw_completed");
-                  }
-                });
-              }
-            } catch (err) { console.error("Erro ao buscar dados:", err); }
-          };
-
-          useEffect(() => {
-            if (user && supabase) {
-              fetchData();
-              const interval = setInterval(fetchData, 5000);
-              return () => clearInterval(interval);
-            }
-          }, [user, supabase]);
-
-          const showMsg = (text) => {
-            setNotification({ show: true, text: String(text) });
-            setTimeout(() => setNotification({ show: false, text: '' }), 4000);
-          };
-
-          const addNotification = async (title, message, type) => {
-            if (!supabase || !user) return;
-            try {
-              await supabase.from('notifications').insert([{ user_id: user.id, title, message, type }]);
-              fetchData();
-            } catch (e) { console.error(e); }
-          };
-
-          const clearAllNotifications = async () => {
-            if (!supabase || !user) return;
-            try {
-              const { error } = await supabase.from('notifications').delete().eq('user_id', user.id);
-              if (error) throw error;
-              setNotifications([]);
-              showMsg("HISTÓRICO LIMPO COM SUCESSO");
-            } catch (e) { showMsg("ERRO AO APAGAR"); }
-          };
-
-          const formatCPF = (value) => {
-            const rawValue = value.replace(/\D/g, '').slice(0, 11);
-            return rawValue.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})/, '$1-$2').replace(/(-\d{2})\d+?$/, '$1');
-          };
-
-          const handleAuth = async (e) => {
-            e.preventDefault();
-            setLoading(true);
-            try {
-              if (isLogin) {
-                const { data, error } = await supabase.auth.signInWithPassword({ email: formData.email, password: formData.password });
-                if (error) throw error;
-                setUser(data.user);
-                setView('home');
-              } else {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.(com|com\.br)$/;
-                if (!emailRegex.test(formData.email)) throw new Error("E-MAIL INVÁLIDO (@ E FINAL .COM OU .COM.BR)");
-                if (!formData.nickname) throw new Error("NICKNAME É OBRIGATÓRIO");
-                const pureCpf = formData.cpf.replace(/\D/g, '');
-                if (!pureCpf || pureCpf.length !== 11) throw new Error("CPF OBRIGATÓRIO: USE EXATAMENTE 11 DÍGITOS");
-                const { data: existingUser } = await supabase.from('users_data').select('nickname, cpf, email').or(`nickname.eq."${formData.nickname}",cpf.eq."${pureCpf}",email.eq."${formData.email}"`);
-                if (existingUser && existingUser.length > 0) throw new Error("DADOS JÁ EM USO");
-                const { data, error: authError } = await supabase.auth.signUp({ email: formData.email, password: formData.password });
-                if (authError) throw authError;
-                if (data.user) {
-                  await supabase.from('users_data').update({ nickname: formData.nickname, cpf: pureCpf, email: formData.email, balance: 0, invited_by: formData.invite || null }).eq('id', data.user.id);
-                  setUser(data.user);
-                  setView('home');
-                }
-              }
-            } catch (err) { showMsg(err.message.toUpperCase()); } finally { setLoading(false); }
-          };
-
-          const startScratchSequence = async () => {
-            if (!userData || userData.balance < betValue || gameState !== 'idle') {
-              if (userData && userData.balance < betValue) showMsg("SALDO INSUFICIENTE");
-              return;
-            }
-            setShowCalculation(false);
-            const cost = Number(betValue);
-            const currentBalance = Number(userData.balance);
-            const bank = Number(bankBalance);
-            let winAmount = 0; let multiplier = 0;
-            const luckRoll = Math.random() * 100;
-            if (bank < 200) { multiplier = luckRoll < 85 ? 0 : Number((Math.random() * 0.4).toFixed(2)); }
-            else {
-                if (luckRoll < 55) multiplier = 0;
-                else if (luckRoll < 85) multiplier = Number((Math.random() * (0.8 - 0.1) + 0.1).toFixed(2));
-                else if (luckRoll < 97) multiplier = Number((Math.random() * (2.5 - 1.1) + 1.1).toFixed(2));
-                else multiplier = Number(((Math.min(bank * 0.15, cost * 10)) / cost).toFixed(2));
-            }
-            winAmount = Number((cost * multiplier).toFixed(2));
-            if (winAmount > (bank * 0.2)) winAmount = Number((bank * 0.1).toFixed(2));
-            const intermediateBalance = currentBalance - cost;
-            setVisualBalance(intermediateBalance);
-            const finalBalanceAfterGame = Number((intermediateBalance + winAmount).toFixed(2));
-            const newBank = Number((bank + cost - winAmount).toFixed(2));
-            try {
-              await Promise.all([supabase.from('users_data').update({ balance: finalBalanceAfterGame }).eq('id', user.id), supabase.from('platform_config').update({ bank_balance: newBank }).eq('id', 1)]);
-              setScratchPrize(multiplier); setTotalWin(winAmount); setGameState('scratching');
-              if (winAmount >= 50) setLastRealWin({ nickname: userData.nickname, amount: winAmount });
-              if (winAmount > cost * 2) addNotification("GRANDE VITÓRIA!", `Parabéns! Você ganhou R$ ${winAmount.toLocaleString('pt-BR')}`, "win");
-            } catch (e) { showMsg("ERRO NA CONEXÃO"); setVisualBalance(currentBalance); setGameState('idle'); }
-          };
-
-          const onScratchComplete = () => {
-            setGameState('revealed'); 
-            if (totalWin <= 0) { setTimeout(() => resetGame(), 2000); return; }
-            setTimeout(() => {
-              setShowCalculation(true); 
-              setTimeout(() => {
-                const balanceBeforeWin = Number(userData.balance) - betValue;
-                const balanceAfterWin = Number(userData.balance); 
-                animateBalanceUpdate(balanceBeforeWin, balanceAfterWin);
-              }, 1500);
-            }, 500);
-          };
-
-          const resetGame = () => { setGameState('idle'); setTotalWin(0); setScratchPrize(0); setShowCalculation(false); };
-
-          const animateBalanceUpdate = (start, end) => {
-            setIsUpdatingBalance(true);
-            let current = start; const duration = 1200; const steps = 40; const increment = (end - start) / steps; let stepCount = 0;
-            const timer = setInterval(() => {
-              current += increment; setVisualBalance(current); stepCount++;
-              if (stepCount >= steps) { clearInterval(timer); setVisualBalance(end); setUserData(prev => ({ ...prev, balance: end })); setIsUpdatingBalance(false); setTimeout(() => resetGame(), 1200); }
-            }, duration / steps);
-          };
-
-          const handleConfirmWithdraw = async () => {
-            const val = parseFloat(withdrawAmount);
-            if (!withdrawAmount || val <= 0) { showMsg("VALOR INVÁLIDO"); return; }
-            if (val > userData.balance) { showMsg("SALDO INSUFICIENTE"); return; }
-            try {
-              setLoading(true);
-              await supabase.from('withdrawals').insert([{ user_id: user.id, amount: val, pix_key: userData.cpf, status: 'pending' }]);
-              const newBalance = Number(userData.balance) - val;
-              await supabase.from('users_data').update({ balance: newBalance }).eq('id', user.id);
-              addNotification("SAQUE SOLICITADO", `Análise iniciada para R$ ${val.toFixed(2)}`, "withdraw_pending");
-              setUserData(prev => ({ ...prev, balance: newBalance })); setVisualBalance(newBalance);
-              showMsg("SOLICITAÇÃO ENVIADA!"); setShowWithdraw(false); setWithdrawAmount('');
-            } catch (err) { showMsg("ERRO AO PROCESSAR"); } finally { setLoading(false); }
-          };
-
-          if (view === 'auth') {
-            return (
-              <div className="min-h-screen bg-[#0f0417] flex flex-col items-center justify-center p-6 text-white relative">
-                <NotificationToast message={notification.text} visible={notification.show} />
-                <div className="w-full max-w-md">
-                  <div className="text-center mb-10"><h1 className="text-6xl font-black text-[#a855f7] italic tracking-tighter">ZAMPI<span className="text-white font-light">BET</span></h1></div>
-                  <div className="bg-[#1a0b26] p-8 rounded-[2rem] border border-white/5">
-                    <div className="flex bg-black/40 p-1 rounded-xl mb-8">
-                      <button onClick={() => setIsLogin(true)} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${isLogin ? 'bg-[#a855f7] text-white' : 'text-gray-500'}`}>Entrar</button>
-                      <button onClick={() => setIsLogin(false)} className={`flex-1 py-3 rounded-lg text-xs font-black uppercase transition-all ${!isLogin ? 'bg-[#a855f7] text-white' : 'text-gray-500'}`}>Registrar</button>
-                    </div>
-                    <form onSubmit={handleAuth} className="space-y-4">
-                      {!isLogin && (
-                        <>
-                          <input type="text" placeholder="NICKNAME" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl text-white outline-none" value={formData.nickname} onChange={e => setFormData({...formData, nickname: e.target.value})} />
-                          <input type="text" placeholder="000.000.000-00" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl text-white outline-none" value={formData.cpf} onChange={e => setFormData({...formData, cpf: formatCPF(e.target.value)})} />
-                        </>
-                      )}
-                      <input type="email" placeholder="E-MAIL" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl text-white outline-none" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
-                      <div className="relative">
-                        <input type={showPassword ? "text" : "password"} placeholder="SENHA" required className="w-full bg-[#0f0417] border border-purple-900/30 p-4 rounded-xl text-white outline-none" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600">
-                            {showPassword ? <LucideIcon name="EyeOff" size={18} /> : <LucideIcon name="Eye" size={18} />}
-                        </button>
-                      </div>
-                      <button type="submit" disabled={loading} className="w-full bg-gradient-to-r from-[#a855f7] to-[#7c3aed] text-white font-black py-5 rounded-xl uppercase italic disabled:opacity-50"> {isLogin ? 'Fazer Login' : 'Criar Conta'} </button>
-                    </form>
-                  </div>
-                </div>
-</div>
-</div>
-<div className="bg-black/40 px-4 py-2 rounded-2xl border border-white/5 flex flex-col items-end min-w-[120px]">
-@@ -674,19 +1215,82 @@ <h1 className="text-6xl font-black text-[#a855f7] italic tracking-tighter">ZAMPI
-<div className="p-6 border-b border-white/5 flex justify-between items-center">
-<h2 className="text-xl font-black italic text-[#a855f7] uppercase tracking-tighter">Histórico de Atividades</h2>
-<button onClick={() => setShowNotifPanel(false)} className="text-gray-500"><X /></button>
-              </div>
-</div>
-            );
-          }
-
-          return (
-            <div className="min-h-screen bg-[#0f0417] text-white flex flex-col items-center">
-              <NotificationToast message={notification.text} visible={notification.show} />
-              <header className="w-full max-w-md bg-[#1a0b26] p-5 flex justify-between items-center sticky top-0 z-[100]">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-tr from-[#a855f7] to-[#7c3aed] rounded-full flex items-center justify-center"><LucideIcon name="User" size={20} /></div>
-                  <div>
-                    <p className="font-black text-sm uppercase italic leading-none">{userData?.nickname || 'Usuário'}</p>
-                    <div className="flex items-center space-x-2 mt-1">
-                       <button onClick={() => setShowNotifPanel(true)} className="relative p-1 text-purple-400">
-                           <LucideIcon name="Bell" size={16} />
-                           {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] w-4 h-4 rounded-full flex items-center justify-center">{unreadCount}</span>}
-                        </button>
-                       <p className="text-[9px] text-green-400 font-bold uppercase">Online</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-black/40 px-4 py-2 rounded-2xl flex flex-col items-end min-w-[120px]">
-                   <span className="text-[8px] font-black text-purple-500 uppercase">Seu Saldo</span>
-                   <span className="font-black text-base text-white">R$ {visualBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                </div>
-              </header>
-
-              {showNotifPanel && (
-                <div className="fixed inset-0 z-[400] bg-black/95 flex justify-center">
-                   <div className="w-full max-w-md flex flex-col h-full bg-[#0f0417]">
-                      <div className="p-6 border-b border-white/5 flex justify-between items-center">
-                         <h2 className="text-xl font-black italic text-[#a855f7] uppercase tracking-tighter">Histórico</h2>
-                         <button onClick={() => setShowNotifPanel(false)} className="text-gray-500"><LucideIcon name="X" /></button>
-                      </div>
-                      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-                         {notifications.length === 0 ? <p className="text-center text-gray-600 mt-10">Vazio</p> : notifications.map(notif => (
-                           <div key={notif.id} className="p-4 rounded-2xl border border-white/5 bg-[#1a0b26] flex items-start space-x-4">
-                              <div className="p-2 bg-purple-500/10 text-purple-500"><LucideIcon name="Zap" size={18} /></div>
-                              <div className="flex-1"><p className="text-xs font-black uppercase">{notif.title}</p><p className="text-xs text-gray-400">{notif.message}</p></div>
-                           </div>
-                         ))}
-                      </div>
-<div className="flex-1 overflow-y-auto p-4 space-y-3">
-{notifications.length === 0 ? (
-<div className="h-full flex flex-col items-center justify-center text-gray-600 space-y-4">
-<Bell size={48} className="opacity-20" />
-<p className="text-sm font-bold uppercase">Nenhuma notificação ainda</p>
-                   </div>
-</div>
-                </div>
-              )}
-
-              <main className="w-full max-w-md p-6 flex-1 flex flex-col items-center space-y-6">
-                <div className="relative aspect-square w-[80%]">
-                   <div className="absolute inset-0 bg-[#0f0417] rounded-[3rem] border-8 border-[#1a0b26] overflow-hidden">
-                      {gameState === 'idle' ? (
-                        <div onClick={startScratchSequence} className="w-full h-full bg-gradient-to-br from-[#a855f7] via-[#7c3aed] to-[#4c1d95] flex flex-col items-center justify-center cursor-pointer">
-                          <LucideIcon name="Star" size={48} fill="white" className="mb-4" />
-                          <p className="font-black text-2xl italic uppercase tracking-tighter text-white">GERAR BILHETE</p>
-) : (
-notifications.map(notif => (
-<div key={notif.id} className={`p-4 rounded-2xl border ${notif.is_read ? 'bg-[#1a0b26]/50 border-white/5' : 'bg-[#1a0b26] border-purple-500/30'} flex items-start space-x-4`}>
-<div className={`p-2 rounded-lg ${notif.type === 'win' || notif.type === 'withdraw_completed' ? 'bg-green-500/10 text-green-500' : 'bg-purple-500/10 text-purple-500'}`}>
-{notif.type === 'win' ? <Trophy size={18} /> : (notif.type === 'withdraw_completed' ? <CheckCircle2 size={18} /> : (notif.type === 'withdraw_pending' ? <Clock size={18} /> : <Zap size={18} />))}
-                        </div>
-</div>
-                      ) : (
-                        <ScratchCard 
-                          prizeText={`R$ ${scratchPrize.toFixed(2).replace('.', ',')}`}
-                          subText={`multiplicado por x${betValue}`}
-                          totalWin={totalWin}
-                          showCalculation={showCalculation}
-                          isLocked={gameState === 'idle'}
-                          onComplete={onScratchComplete}
-                          gameState={gameState}
-                        />
-                      )}
-                   </div>
-<div className="flex-1">
-<p className="text-xs font-black uppercase text-white mb-1">{notif.title}</p>
-<p className="text-xs text-gray-400 font-medium">{notif.message}</p>
-@@ -715,7 +1319,12 @@ <h2 className="text-xl font-black italic text-[#a855f7] uppercase tracking-tight
-<div className="bg-white/10 p-6 rounded-full backdrop-blur-md mb-4 border border-white/20 group-hover:scale-110 transition-transform"><Star size={48} fill="white" /></div>
-<p className="font-black text-2xl italic uppercase tracking-tighter text-white">GERAR BILHETE</p>
-<div className="mt-4 bg-black/40 px-6 py-2 rounded-full border border-white/10 font-bold text-sm text-white">MULTIPLICADO POR {betValue}X</div>
-                </div>
-</div>
-                <GlobalLiveTicker lastRealWin={lastRealWin} />
-                <div className="grid grid-cols-3 gap-3 w-full">
-                  {[1, 5, 10, 25, 50, 100].map(v => (
-                    <button key={v} onClick={() => gameState === 'idle' && setBetValue(v)} className={`py-4 rounded-2xl font-black text-sm transition-all border-2 ${betValue === v ? 'bg-[#a855f7] border-white text-white' : 'bg-[#1a0b26] border-purple-500/10 text-purple-700'}`}>R$ {v}</button>
-                  ))}
-) : (
-<ScratchCard 
-key={gameState === 'scratching' || gameState === 'revealed' ? 'active' : 'idle'}
-@@ -759,17 +1368,46 @@ <h3 className="text-xl font-black italic uppercase text-white">Solicitar Saque</
-<div className="w-full bg-black/40 p-4 rounded-xl border border-white/5 flex items-center justify-between">
-<span className="text-sm font-bold text-gray-300 tracking-wider">{userData?.cpf ? formatCPF(userData.cpf) : '---'}</span>
-<ShieldCheck size={16} className="text-green-500 opacity-50" />
-                </div>
-</div>
-              </main>
-
-              <nav className="w-full max-w-md bg-[#1a0b26] p-6 flex justify-around items-center">
-                 <button onClick={() => setView('home')} className="flex flex-col items-center text-[#a855f7]"><LucideIcon name="LayoutGrid" size={24}/><span className="text-[8px] font-black uppercase mt-1">Jogar</span></button>
-                 <button onClick={() => setShowWithdraw(true)} className="flex flex-col items-center text-gray-500"><LucideIcon name="Wallet" size={24}/><span className="text-[8px] font-black uppercase mt-1">Saque</span></button>
-                 <button onClick={() => setShowDeposit(true)} className="flex flex-col items-center text-gray-500"><LucideIcon name="ArrowUpCircle" size={24}/><span className="text-[8px] font-black uppercase mt-1">Depósito</span></button>
-              </nav>
-
-              {showWithdraw && (
-                <div className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-6">
-                   <div className="bg-[#1a0b26] w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 relative">
-                      <button onClick={() => setShowWithdraw(false)} className="absolute right-6 top-6 text-gray-500"><LucideIcon name="X"/></button>
-                      <h3 className="text-xl font-black italic uppercase text-white mb-6">Saque</h3>
-                      <input type="number" placeholder="Valor" className="w-full bg-[#0f0417] p-4 rounded-xl text-white mb-6" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
-                      <button onClick={handleConfirmWithdraw} className="w-full bg-[#a855f7] py-5 rounded-2xl font-black uppercase">Confirmar Saque</button>
-                   </div>
-</div>
-<div className="mb-6">
-<div className="flex justify-between items-center mb-2 px-1">
-<label className="text-[10px] font-black text-purple-500 uppercase tracking-widest">Valor do Saque</label>
-<span className="text-[10px] font-black text-white/40 uppercase">R$ {userData?.balance?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                </div>
-</div>
-              )}
-
-              {showDeposit && (
-                <div className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center p-6 text-center">
-                   <div className="bg-[#1a0b26] w-full max-w-sm rounded-[2.5rem] p-8 border border-white/10 relative">
-                      <button onClick={() => setShowDeposit(false)} className="absolute right-6 top-6 text-gray-500"><LucideIcon name="X"/></button>
-                      <h3 className="text-xl font-black italic uppercase text-[#a855f7] mb-6">Depósito PIX</h3>
-                      <img src={QR_CODE_URL} className="w-48 h-48 mx-auto mb-6" alt="QR Code"/>
-                      <button onClick={() => { navigator.clipboard.writeText(PIX_PAYLOAD); showMsg("COPIADO!"); }} className="w-full bg-[#a855f7] py-4 rounded-xl font-black uppercase italic">Copiar Código</button>
-                   </div>
-<div className="relative">
-<span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-purple-500">R$</span>
-<input type="number" placeholder="0,00" className="w-full bg-[#0f0417] p-4 pl-12 rounded-xl border border-purple-900/30 font-black text-2xl text-white outline-none focus:border-[#a855f7]" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)} />
-                </div>
-</div>
-              )}
-            </div>
-          );
-</div>
-<button onClick={handleConfirmWithdraw} disabled={loading} className="w-full bg-gradient-to-r from-[#a855f7] to-[#7c3aed] py-5 rounded-2xl font-black uppercase italic shadow-xl shadow-purple-500/20 active:scale-95 transition-all">
-{loading ? 'Processando...' : 'Confirmar Saque'}
-@@ -801,8 +1439,13 @@ <h3 className="text-xl font-black italic uppercase text-[#a855f7] mb-6">Recarga
-.animate-flame-flicker {
-animation: flame-flicker 1.5s ease-in-out infinite;
-border-radius: 50% 50% 20% 20%;
+        @keyframes flame-flicker {
+          0%, 100% { transform: translateY(0) scaleY(1); opacity: 0.4; }
+          50% { transform: translateY(-5px) scaleY(1.1); opacity: 0.6; }
         }
-}
+        .animate-flame-flicker {
+          animation: flame-flicker 1.5s ease-in-out infinite;
+          border-radius: 50% 50% 20% 20%;
+        }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
-canvas { touch-action: none; }
-`}</style>
-</div>
+        canvas { touch-action: none; }
+      `}</style>
+    </div>
+  );
+}
